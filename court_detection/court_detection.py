@@ -6,9 +6,10 @@ import os
 
 def main(argv):
     cwd = os.getcwd()
-    default_file = os.path.join(cwd, "imgs", "tennis_court_1.jpg")
+    imgs_path = os.path.join(cwd, "imgs")
+    default_file = os.path.join(imgs_path, "tennis_court_1.jpg")
 
-    filename = argv[0] if len(argv) > 0 else default_file
+    filename = os.path.join(imgs_path, argv[0]) if len(argv) > 0 else default_file
     
     # Loads an image
     src = cv.imread(cv.samples.findFile(filename), cv.IMREAD_GRAYSCALE)
@@ -25,7 +26,8 @@ def main(argv):
     cdst = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
     cdstP = np.copy(cdst)
 
-    lines = cv.HoughLines(dst, 1, np.pi / 180, 150, None, 0, 0)
+    standard_threshold = 500
+    lines = cv.HoughLines(dst, 1, np.pi / 180, standard_threshold, None, 0, 0)
     
     if lines is not None:
         for i in range(0, len(lines)):
@@ -39,8 +41,8 @@ def main(argv):
             pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
             cv.line(cdst, pt1, pt2, (0,0,255), 3, cv.LINE_AA)
     
-    
-    linesP = cv.HoughLinesP(dst, 1, np.pi / 180, 50, None, 50, 10)
+    probabilistic_threshold = 25
+    linesP = cv.HoughLinesP(dst, 1, np.pi / 180, probabilistic_threshold, None, 50, 10)
     
     if linesP is not None:
         for i in range(0, len(linesP)):
