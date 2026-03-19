@@ -20,13 +20,18 @@ def main(argv):
         print ('Usage: hough_lines.py [image_name -- default ' + default_file + '] \n')
         return -1
     
-    dst = cv.Canny(src, 50, 200, None, 3)
+    # Gaussian blur
+    blur = cv.GaussianBlur(src,(5,5),0)
+    
+    dst = cv.Canny(src, 200, 400, None, 3)
+    dstB = cv.Canny(blur, 200, 400, None, 3)
 
     # Copy edges to the images that will display the results in BGR
     cdst = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
     cdstP = np.copy(cdst)
+    cdstB = np.copy(cdst)
 
-    standard_threshold = 500
+    standard_threshold = 150
     lines = cv.HoughLines(dst, 1, np.pi / 180, standard_threshold, None, 0, 0)
     
     if lines is not None:
@@ -40,18 +45,33 @@ def main(argv):
             pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
             pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
             cv.line(cdst, pt1, pt2, (0,0,255), 3, cv.LINE_AA)
+
+    linesB = cv.HoughLines(dstB, 1, np.pi / 180, standard_threshold, None, 0, 0)
     
-    probabilistic_threshold = 25
-    linesP = cv.HoughLinesP(dst, 1, np.pi / 180, probabilistic_threshold, None, 50, 10)
+    if linesB is not None:
+        for i in range(0, len(linesB)):
+            rho = linesB[i][0][0]
+            theta = linesB[i][0][1]
+            a = math.cos(theta)
+            b = math.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
+            pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
+            cv.line(cdstB, pt1, pt2, (0,0,255), 3, cv.LINE_AA)
     
-    if linesP is not None:
-        for i in range(0, len(linesP)):
-            l = linesP[i][0]
-            cv.line(cdstP, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
+    # probabilistic_threshold = 25
+    # linesP = cv.HoughLinesP(dst, 1, np.pi / 180, probabilistic_threshold, None, 50, 10)
     
-    cv.imshow("Source", src)
+    # if linesP is not None:
+    #     for i in range(0, len(linesP)):
+    #         l = linesP[i][0]
+    #         cv.line(cdstP, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
+    
+    # cv.imshow("Source", src)
     cv.imshow("Detected Lines (in red) - Standard Hough Line Transform", cdst)
-    cv.imshow("Detected Lines (in red) - Probabilistic Line Transform", cdstP)
+    cv.imshow("Detected Lines (in red) - Standard Hough Line Transform with blur", cdstB)
+    # cv.imshow("Detected Lines (in red) - Probabilistic Line Transform", cdstP)
     
     cv.waitKey()
     return 0
