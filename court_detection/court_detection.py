@@ -5,8 +5,8 @@ import numpy as np
 import os
 
 # HEIC stuff
-from PIL import Image
-import pillow_heif
+# from PIL import Image
+# import pillow_heif
 
 def main(argv):
     cwd = os.getcwd()
@@ -16,8 +16,26 @@ def main(argv):
     filename = os.path.join(imgs_path, argv[0]) if len(argv) > 0 else default_file
     
     # Loads an image
-    src = cv.imread(cv.samples.findFile(filename), cv.IMREAD_GRAYSCALE)
+    img = cv.imread(cv.samples.findFile(filename))
 
+    new_img = np.zeros(img.shape, img.dtype)
+ 
+ 
+ 
+    alpha = 1 # Simple contrast control
+    beta = -200    # Simple brightness control
+    
+    new_img = cv.convertScaleAbs(img, alpha=alpha, beta=beta)
+    
+    # cv.imshow('Original Image', img)
+    # cv.imshow('New Image', new_img)
+    
+    # # Wait until user press some key
+    # cv.waitKey()
+
+    # src = cv.imread(cv.samples.findFile(filename), cv.IMREAD_GRAYSCALE)
+    
+    src = new_img
     # Check if image is loaded fine
     if src is None:
         print ('Error opening image!')
@@ -64,17 +82,21 @@ def main(argv):
             pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
             cv.line(cdstB, pt1, pt2, (0,0,255), 3, cv.LINE_AA)
     
-    # probabilistic_threshold = 25
-    # linesP = cv.HoughLinesP(dst, 1, np.pi / 180, probabilistic_threshold, None, 50, 10)
+    probabilistic_threshold = 25
+    linesP = cv.HoughLinesP(dst, 1, np.pi / 180, probabilistic_threshold, None, 50, 10)
     
-    # if linesP is not None:
-    #     for i in range(0, len(linesP)):
-    #         l = linesP[i][0]
-    #         cv.line(cdstP, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
+    if linesP is not None:
+        for i in range(0, len(linesP)):
+            l = linesP[i][0]
+            cv.line(cdstP, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
     
     # cv.imshow("Source", src)
-    cv.imshow("Detected Lines (in red) - Standard Hough Line Transform", cdst)
-    cv.imshow("Detected Lines (in red) - Standard Hough Line Transform with blur", cdstB)
+    cv.imshow("Blurred Image", blur)
+    cv.imshow("Canny", dst)
+    cv.imshow("Blurred Canny", dstB)
+    
+    # cv.imshow("Detected Lines (in red) - Standard Hough Line Transform", cdst)
+    # cv.imshow("Detected Lines (in red) - Standard Hough Line Transform with blur", cdstB)
     # cv.imshow("Detected Lines (in red) - Probabilistic Line Transform", cdstP)
     
     cv.waitKey()
