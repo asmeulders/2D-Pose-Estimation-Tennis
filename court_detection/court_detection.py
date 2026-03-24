@@ -4,6 +4,10 @@ import cv2 as cv
 import numpy as np
 import os
 
+# HEIC stuff
+from PIL import Image
+import pillow_heif
+
 def main(argv):
     cwd = os.getcwd()
     imgs_path = os.path.join(cwd, "imgs")
