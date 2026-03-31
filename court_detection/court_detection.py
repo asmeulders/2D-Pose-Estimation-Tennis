@@ -15,7 +15,7 @@ def setup_image(file_name):
     return cv.imread(cv.samples.findFile(file_path), cv.IMREAD_GRAYSCALE)
 
 def morphological_grad(img):
-    kernel = cv.getStructuringElement(cv.MORPH_CROSS, (3, 3))
+    kernel = cv.getStructuringElement(cv.MORPH_CROSS, (5, 5))
     gradient = cv.morphologyEx(img, cv.MORPH_GRADIENT, kernel)
     return gradient
 
@@ -66,7 +66,7 @@ def main(argv):
     cdstP = np.copy(cdst)
     # cdstB = np.copy(cdst)
 
-    standard_threshold = 200
+    standard_threshold = 1000
     lines = cv.HoughLines(dst, 1, np.pi / 180, standard_threshold, None, 0, 0)
     
     if lines is not None:
