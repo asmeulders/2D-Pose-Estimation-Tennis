@@ -5,3 +5,4 @@ venv/
 pose-tennis/data/leeds/images/*
 pose-tennis/data/leeds/joints.mat
 pose-tennis/data/leeds/labels.npz
+src/venv/
