@@ -3,7 +3,8 @@ import torch as pt
 
 
 def main():
-    pass
+    x = pt.rand(5,3)
+    print(x)
 
 if __name__ == "__main__":
     main()
