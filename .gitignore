@@ -3,6 +3,5 @@ venv/
  
 # Ignore all images, but keep one specific one
 pose-tennis/data/leeds/images/*
-pose-tennis/data/leeds/joints.mat
-pose-tennis/data/leeds/labels.npz
+!pose-tennis/data/leeds/images/im00001.jpg
 src/venv/
