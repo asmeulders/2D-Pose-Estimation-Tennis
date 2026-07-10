@@ -8,13 +8,11 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 from PIL import Image
 
-plt.ion()
-
-labels = np.load('./leeds/labels.npz')
+labels = np.load('leeds/labels.npz')
 
 print(labels['arr_0'])
 
-data = loadmat('./leeds/joints.mat')
+data = loadmat('leeds/joints.mat')
 
 joints = data['joints']
 

@@ -1,7 +1,7 @@
 # Virtual environment
 venv/
+pose-tennis/venv/
  
 # Ignore all images, but keep one specific one
 pose-tennis/data/leeds/images/*
 !pose-tennis/data/leeds/images/im00001.jpg
-src/venv/
