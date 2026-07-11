@@ -136,8 +136,8 @@ class ToTensor(object):
         # numpy image: H x W x C
         # torch image: C x H x W
         img = img.transpose((2, 0, 1))
-        return {'img': torch.from_numpy(img),
-                'joint_labels': torch.from_numpy(joint_labels)}
+        return {'img': torch.from_numpy(img).float(),
+                'joint_labels': torch.from_numpy(joint_labels).float()}
 
 
 class Normalize(object):
