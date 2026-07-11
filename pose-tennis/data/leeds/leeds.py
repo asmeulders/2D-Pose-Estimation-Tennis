@@ -30,7 +30,6 @@ class LeedsSportsDataset(Dataset):
         self.joints = joints
         self.img_dir = img_dir
         self.transform = transform
-        self.target_transform = target_transform
 
     def __len__(self):
         return self.joints.shape[0] # 10000
@@ -46,14 +45,14 @@ class LeedsSportsDataset(Dataset):
         joint_labels = self.joints[idx]
         joint_labels = np.transpose(np.array(joint_labels))
 
+        sample = {'img': img, 'joint_labels': joint_labels}
+
         # Apply transforms
         if self.transform:
-            img = self.transform(img)
-        if self.target_transform:
-            joint_labels = self.target_transform(joint_labels)
+            sample = self.transform(sample)
 
         # Return a sample
-        return {'img': img, 'joint_labels': joint_labels}
+        return sample
         
 
 class Rescale(object):
@@ -140,9 +139,19 @@ class ToTensor(object):
         return {'image': torch.from_numpy(img),
                 'joint_labels': torch.from_numpy(joint_labels)}
 
-#data = loadmat('leeds/joints.mat')
-#joints = data['joints']
-#joints = np.transpose(np.array(joints), (2,1,0))
+
+class Normalize(object):
+    """Normalize image using ImageNet stats (for ResNet transfer learning)."""
+    def __init__(self, mean=None, std=None):
+        self.mean = mean or [0.485, 0.456, 0.406]
+        self.std = std or [0.229, 0.224, 0.225]
+        self.normalize = transforms.Normalize(self.mean, self.std)
+
+    def __call__(self, sample):
+        img, joint_labels = sample['img'], sample['joint_labels']
+        img = self.normalize(img)
+        return {'img': img, 'joint_labels': joint_labels}
+
 
 def show_joints(img, joint_labels):
     """Show image with joints on image"""
@@ -155,41 +164,42 @@ def show_joints(img, joint_labels):
     plt.imshow(img)
     plt.scatter(x, y, 50, c="r", marker="+")
 
-leeds_dataset = LeedsSportsDataset('joints.mat', 'images')
-#print(len(leeds_dataset))
-#fig = plt.figure()
+if __name__ == '__main__':
+    leeds_dataset = LeedsSportsDataset('joints.mat', 'images')
+    #print(len(leeds_dataset))
+    #fig = plt.figure()
 
-#for i, sample in enumerate(leeds_dataset):
-#    print(f"{i}: img shape - {sample['img'].shape},\
-#            joint label shape: {sample['joint_labels'].shape}")
-#    ax = plt.subplot(1, 4, i+1)
-#    plt.tight_layout()
-#    ax.set_title('Sample #{}'.format(i))
-#    ax.axis('off')
-#    show_joints(**sample)
-#    if i == 0:
-#        plt.show()
-#        break
+    #for i, sample in enumerate(leeds_dataset):
+    #    print(f"{i}: img shape - {sample['img'].shape},\
+    #            joint label shape: {sample['joint_labels'].shape}")
+    #    ax = plt.subplot(1, 4, i+1)
+    #    plt.tight_layout()
+    #    ax.set_title('Sample #{}'.format(i))
+    #    ax.axis('off')
+    #    show_joints(**sample)
+    #    if i == 0:
+    #        plt.show()
+    #        break
 
-#img = mpimg.imread('./leeds/images/im00001.jpg')
-#show_joints(img, joints[0])
+    #img = mpimg.imread('./leeds/images/im00001.jpg')
+    #show_joints(img, joints[0])
 
-#plt.axis('off')
-#plt.show()
+    #plt.axis('off')
+    #plt.show()
 
-scale = Rescale(256)
-crop = RandomCrop(128)
-composed = transforms.Compose([Rescale(256),
+    scale = Rescale(256)
+    crop = RandomCrop(128)
+    composed = transforms.Compose([Rescale(256),
                                RandomCrop(224)])
 
-# Apply each of the above transforms on sample.
-fig = plt.figure()
-sample = leeds_dataset[0]
-for i, tsfrm in enumerate([scale, crop, composed]):
-    transformed_sample = tsfrm(sample)
-    ax = plt.subplot(1, 3, i + 1)
-    plt.tight_layout()
-    ax.set_title(type(tsfrm).__name__)
-    show_joints(**transformed_sample)
+    # Apply each of the above transforms on sample.
+    fig = plt.figure()
+    sample = leeds_dataset[0]
+    for i, tsfrm in enumerate([scale, crop, composed]):
+        transformed_sample = tsfrm(sample)
+        ax = plt.subplot(1, 3, i + 1)
+        plt.tight_layout()
+        ax.set_title(type(tsfrm).__name__)
+        show_joints(**transformed_sample)
 
-plt.show()
+    plt.show()
