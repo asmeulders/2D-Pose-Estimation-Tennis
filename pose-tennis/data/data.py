@@ -20,54 +20,66 @@ class LeedsSportsDataset(Dataset):
             root_dir (string): Directory with images.
             transform (callable, optional): Optional transform to be applied on a sample.
         """
+        # Get joint labels from file
         data = loadmat(mat_file)
         joints = data['joints']
         joints = np.transpose(np.array(joints), (2,1,0))
-
+        
+        # Set values
         self.joints = joints
         self.img_dir = img_dir
         self.transform = transform
         self.target_transform = target_transform
 
     def __len__(self):
-        return self.joints.shape[0]
+        return self.joints.shape[0] # 10000
 
     def __getitem__(self, idx):
-        filename = f"im{idx:05d}.jpg"
+        # Get images from leeds/images
+        filename = f"im{idx+1:05d}.jpg"
         img_path = os.path.join(self.img_dir, filename)
-        image = decode_image(img_path)
+        img = decode_image(img_path)
+        img = np.transpose(np.array(img), (1,2,0)) # (chan, height, width) -> (height, width, chan)
+        
+        # Get joint labels
         joint_labels = self.joints[idx]
+
+        # Apply transforms
         if self.transform:
-            image = self.transform(image)
+            img = self.transform(img)
         if self.target_transform:
             joint_labels = self.target_transform(joint_labels)
-        return {'image': image, 'joint_labels': joint_labels}
+
+        # Return a sample
+        return {'img': img, 'joint_labels': joint_labels}
         
 
 #data = loadmat('leeds/joints.mat')
 #joints = data['joints']
 #joints = np.transpose(np.array(joints), (2,1,0))
 
-def show_joints(img, joints):
+def show_joints(img, joint_labels):
     """Show image with joints on image"""
-    x, y, v = joints
+    # get position (x, y, visibility)
+    x, y, v = joint_labels
 
+    # Show image and place markers on joints
     plt.imshow(img)
     plt.scatter(x, y, 50, c="r", marker="+")
 
 leeds_dataset = LeedsSportsDataset('leeds/joints.mat', 'leeds/images')
-
+print(len(leeds_dataset))
 fig = plt.figure()
 
 for i, sample in enumerate(leeds_dataset):
-    print(f"{i}: img shape - {sample['image'].shape},\
+    print(f"{i}: img shape - {sample['img'].shape},\
             joint label shape: {sample['joint_labels'].shape}")
     ax = plt.subplot(1, 4, i+1)
     plt.tight_layout()
     ax.set_title('Sample #{}'.format(i))
     ax.axis('off')
-    show_landmarks(**sample)
-    if i == 3:
+    show_joints(**sample)
+    if i == 0:
         plt.show()
         break
 
