@@ -28,6 +28,7 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
             print('-' * 10)
 
             for phase in ['train', 'val']:
+                print(phase)
                 if phase == 'train':
                     model.train()
                 else:
@@ -36,6 +37,7 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
                 running_loss = 0.0
 
                 for sample_batch in dataloaders[phase]:
+                    print("batch")
                     img_batch = sample_batch['img'].to(device)
                     joint_labels_batch = sample_batch['joint_labels'].to(device)  # shape: (batch, 14, 3) if visibility still included
                     target = joint_labels_batch[:, :, :2]
@@ -224,7 +226,7 @@ if __name__ == '__main__':
     model = train(model, loss_function, optimizer, scheduler=exp_lr_scheduler,
                   dataloaders=loaders, dataset_sizes=dataset_sizes, num_epochs=25)
     
-    visualize_model(model, loaders, device='cpu')
+    visualize_model(model, loaders, device='cuda')
     plt.show()
 
     # Usage Example:
