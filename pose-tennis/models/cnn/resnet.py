@@ -49,18 +49,21 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
                         loss = loss_function(outputs, target)
 
                         if phase == 'train':
+                            print('back')
                             loss.backward()
                             optimizer.step()
 
                     running_loss += loss.item() * img_batch.size(0)
 
                 if phase == 'train':
+                    print('step')
                     scheduler.step()
 
                 epoch_loss = running_loss / dataset_sizes[phase]
                 print(f'{phase} Loss: {epoch_loss:.4f}')
 
                 if phase == 'val' and epoch_loss < best_loss:
+                    print('update loss')
                     best_loss = epoch_loss
                     torch.save(model.state_dict(), best_model_params_path)
 
