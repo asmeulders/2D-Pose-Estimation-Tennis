@@ -16,7 +16,6 @@ import data.leeds.leeds as leeds
 
 def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes, num_epochs=25, device="cpu"):
     since = time.time()
-
     with TemporaryDirectory() as tempdir:
         best_model_params_path = os.path.join(tempdir, 'best_model_params.pt')
 
@@ -28,7 +27,6 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
             print('-' * 10)
 
             for phase in ['train', 'val']:
-                print(phase)
                 if phase == 'train':
                     model.train()
                 else:
@@ -37,7 +35,6 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
                 running_loss = 0.0
 
                 for sample_batch in dataloaders[phase]:
-                    print("batch")
                     img_batch = sample_batch['img'].to(device)
                     joint_labels_batch = sample_batch['joint_labels'].to(device)  # shape: (batch, 14, 3) if visibility still included
                     target = joint_labels_batch[:, :, :2]
@@ -51,14 +48,12 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
                         loss = loss_function(outputs, target)
 
                         if phase == 'train':
-                            print('back')
                             loss.backward()
                             optimizer.step()
 
                     running_loss += loss.item() * img_batch.size(0)
 
                 if phase == 'train':
-                    print('step')
                     scheduler.step()
 
                 epoch_loss = running_loss / dataset_sizes[phase]
@@ -152,7 +147,8 @@ if __name__ == '__main__':
     data_path = os.path.join(current_dir, 'data', 'leeds')
     joints_path = os.path.join(data_path, 'joints.mat')
     images_path = os.path.join(data_path, 'images')
-
+    model_path = os.path.join(current_dir, 'models', 'cnn')
+    
     leeds_dataset = leeds.LeedsSportsDataset(joints_path, images_path, transform=leeds_transforms)
 
     batch_size = 16
@@ -222,11 +218,14 @@ if __name__ == '__main__':
 
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
-
-    model = train(model, loss_function, optimizer, scheduler=exp_lr_scheduler,
-                  dataloaders=loaders, dataset_sizes=dataset_sizes, num_epochs=25)
     
-    visualize_model(model, loaders, device='cuda')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    model = train(model, loss_function, optimizer, scheduler=exp_lr_scheduler,
+                  dataloaders=loaders, dataset_sizes=dataset_sizes, num_epochs=5, device=device)
+    
+    torch.save(model.state_dict(), model_path)
+    visualize_model(model, loaders, device=device)
     plt.show()
 
     # Usage Example:
