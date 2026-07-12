@@ -222,9 +222,10 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     model = train(model, loss_function, optimizer, scheduler=exp_lr_scheduler,
-                  dataloaders=loaders, dataset_sizes=dataset_sizes, num_epochs=5, device=device)
+                  dataloaders=loaders, dataset_sizes=dataset_sizes, num_epochs=1, device=device)
     
-    torch.save(model.state_dict(), model_path)
+    torch.save(model.state_dict(), os.path.join(model_path, 'resnet_weights.pth'))
+
     visualize_model(model, loaders, device=device)
     plt.show()
 
