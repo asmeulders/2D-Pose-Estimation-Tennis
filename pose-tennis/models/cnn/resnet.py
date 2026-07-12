@@ -134,6 +134,29 @@ def imshow(img, joint_labels_batch, nrow):
     plt.scatter(x, y, 50, c="r", marker="+")
     plt.show()
 
+def imsave(img, gt_joints, pred_joints, nrow):
+    """Save image to disk showing predictions vs gt"""
+    img = img.numpy().transpose((1,2,0))
+    mean = np.array([0.485, 0.456, 0.406])
+    std = np.array([0.229, 0.224, 0.225])
+    img = std * img + mean
+    img = np.clip(img, 0, 1)
+    plt.imshow(img)
+    x = y = np.array([])
+    for j, joint_labels_batch in enumerate([gt_joints, pred_joints]):
+        for i, joint_labels in enumerate(joint_labels_batch):
+            joint_labels = joint_labels.detach().numpy()
+            # need to shift down x values
+            sample_joints_x = joint_labels[:,0] + (i%nrow) * (224) # image width is reshaped to 224
+            x = np.concatenate((x, sample_joints_x))
+            # y values can stay the same
+            sample_joints_y = joint_labels[:,1] + (i // nrow) * 224
+            y = np.concatenate((y, sample_joints_y))
+        color = "r" if j % 2 == 0 else "b"
+        plt.scatter(x, y, 50, c=color, marker="+")
+    plt.savefig("predictions.png")
+
+
 if __name__ == '__main__':
     leeds_transforms = transforms.Compose([
             leeds.Rescale(256),
@@ -194,6 +217,7 @@ if __name__ == '__main__':
         'test': dataset_size * test_split
     }
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # Get a batch of training data
     sample_batch = next(iter(loaders['train']))
     img_batch = sample_batch['img']
@@ -204,12 +228,23 @@ if __name__ == '__main__':
     out = torchvision.utils.make_grid(img_batch, nrow=nrow, padding=padding)
 
     imshow(out, joint_labels_batch, nrow)
-
-
+    
+    test_batch = next(iter(loaders['test']))
+    test_img_batch = test_batch['img']
+    gt_joints = test_batch['joint_labels']
+    
     # Download pretrained model and change output to my class (x,y) * 14 joints
-    model = torchvision.models.resnet50(pretrained=True)
+    model = torchvision.models.resnet50() # using fine tuned parameters now
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, 28)
+    print('Load weights')
+    model.load_state_dict(torch.load(os.path.join(model_path, 'resnet_weights.pth'), 
+                                     weights_only=True, map_location=device))
+
+    pred_joints = model(test_img_batch)
+    pred_joints = pred_joints.view(-1, 14, 2)
+    out = torchvision.utils.make_grid(test_img_batch, nrow=nrow, padding=padding)
+    imsave(out, gt_joints, pred_joints, nrow)
 
     loss_function = nn.MSELoss()
 
@@ -219,15 +254,14 @@ if __name__ == '__main__':
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
     
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     model = train(model, loss_function, optimizer, scheduler=exp_lr_scheduler,
-                  dataloaders=loaders, dataset_sizes=dataset_sizes, num_epochs=1, device=device)
+                  dataloaders=loaders, dataset_sizes=dataset_sizes, num_epochs=10, device=device)
     
     torch.save(model.state_dict(), os.path.join(model_path, 'resnet_weights.pth'))
-
-    visualize_model(model, loaders, device=device)
-    plt.show()
+    print('Saved weights')
+    # visualize_model(model, loaders, device=device)
+    # plt.show()
 
     # Usage Example:
     # num_epochs = 10
