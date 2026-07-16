@@ -5,7 +5,7 @@ from scipy.io import loadmat
 from skimage import transform
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
 from torchvision import transforms, utils
 from torchvision.io import decode_image
 from PIL import Image
@@ -14,7 +14,7 @@ from PIL import Image
 class LeedsSportsDataset(Dataset):
     """Leeds Sports Pose (Extended) Dataset"""
 
-    def __init__(self, mat_file, img_dir, transform=None, target_transform=None):
+    def __init__(self, mat_file, img_dir, transform=None):
         """
         Arguments:
             mat_file (string): Path to mat file with joint annotations.
@@ -203,3 +203,47 @@ if __name__ == '__main__':
         show_joints(**transformed_sample)
 
     plt.show()
+
+
+def split_dataset(
+            dataset: LeedsSportsDataset, 
+            train_split: float, val_split: float, test_split: float,
+            batch_size: int, random_seed=None, shuffle_dataset: bool = True
+            ):
+    assert (train_split + val_split + test_split) == 1
+    
+    dataset_size = len(dataset)
+    indices = list(range(dataset_size))
+
+    train_index = int(np.floor((1-train_split) * dataset_size))
+    validation_index = int(np.floor(test_split  * dataset_size))
+
+    if shuffle_dataset:
+        np.random.seed(random_seed)
+        np.random.shuffle(indices)
+
+    # Get indices to sample
+    indices = {
+        'train': indices[train_index:],
+        'val': indices[validation_index:train_index],
+        'test': indices[:validation_index]
+    }
+
+    # Make random samplers
+    samplers = {
+        'train': SubsetRandomSampler(indices['train']),
+        'val': SubsetRandomSampler(indices['val']),
+        'test': SubsetRandomSampler(indices['test'])
+    }
+
+    # Make dataloaders
+    loaders = {
+        'train': torch.utils.data.DataLoader(dataset, batch_size=batch_size, 
+                                                    sampler=samplers['train']),
+        'val': torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+                                                    sampler=samplers['val']),
+        'test': torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+                                                    sampler=samplers['test'])
+    }
+
+    return loaders

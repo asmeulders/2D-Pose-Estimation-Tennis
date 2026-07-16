@@ -5,6 +5,7 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 import torchvision
 from torchvision import transforms
+from torchvision.models import resnet50, ResNet50_Weights
 from torch.utils.data.sampler import SubsetRandomSampler
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,65 +13,94 @@ import time
 from tempfile import TemporaryDirectory
 
 import data.leeds.leeds as leeds
+from train import save_ckp
+
+def make_resnet50(fine_tune=True, weights_path=None):
+    # Get model
+    initialize_weights = None if weights_path else ResNet50_Weights.DEFAULT
+    model = resnet50(weights=initialize_weights)
+
+    # Freeze parameters so gradients arent included
+    if not fine_tune:
+        for param in model.parameters():
+            param.requires_grad = False
+
+    # Make final output layer
+    num_ftrs = model.fc.in_features
+    model.fc = nn.Linear(num_ftrs, 28) # 14 joints * 2 coordinates
+
+    # Load weights
+    if weights_path:
+        assert isinstance(weights_path, str)
+        ''
+        print(f"Load weights from {weights_path}")
+        model.load_state_dict(
+            torch.load(weights_path, weights_only=True, map_location=device))
+    
+    return model
 
 
-def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes, num_epochs=25, device="cpu"):
+
+
+def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes, checkpoint_path, best_model_path, start_epoch=0, num_epochs=25, device="cpu"):
     since = time.time()
-    with TemporaryDirectory() as tempdir:
-        best_model_params_path = os.path.join(tempdir, 'best_model_params.pt')
+    best_loss = float('inf')
 
-        torch.save(model.state_dict(), best_model_params_path)
-        best_loss = float('inf')
+    for epoch in range(start_epoch, num_epochs):
+        print(f'Epoch {epoch}/{num_epochs - 1}')
+        print('-' * 10)
 
-        for epoch in range(num_epochs):
-            print(f'Epoch {epoch}/{num_epochs - 1}')
-            print('-' * 10)
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                model.train()
+            else:
+                model.eval()
 
-            for phase in ['train', 'val']:
-                if phase == 'train':
-                    model.train()
-                else:
-                    model.eval()
+            running_loss = 0.0
 
-                running_loss = 0.0
+            for sample_batch in dataloaders[phase]:
+                img_batch = sample_batch['img'].to(device)
+                joint_labels_batch = sample_batch['joint_labels'].to(device)  # shape: (batch, 14, 3) if visibility still included
+                target = joint_labels_batch[:, :, :2]
 
-                for sample_batch in dataloaders[phase]:
-                    img_batch = sample_batch['img'].to(device)
-                    joint_labels_batch = sample_batch['joint_labels'].to(device)  # shape: (batch, 14, 3) if visibility still included
-                    target = joint_labels_batch[:, :, :2]
+                optimizer.zero_grad() # reset gradients
 
-                    optimizer.zero_grad() # reset gradients
+                with torch.set_grad_enabled(phase == 'train'):
+                    outputs = model(img_batch)
+                    outputs = outputs.view(-1, 14, 2)
 
-                    with torch.set_grad_enabled(phase == 'train'):
-                        outputs = model(img_batch)
-                        outputs = outputs.view(-1, 14, 2)
+                    loss = loss_function(outputs, target)
 
-                        loss = loss_function(outputs, target)
+                    if phase == 'train':
+                        loss.backward()
+                        optimizer.step()
 
-                        if phase == 'train':
-                            loss.backward()
-                            optimizer.step()
+                running_loss += loss.item() * img_batch.size(0)
 
-                    running_loss += loss.item() * img_batch.size(0)
+            if phase == 'train':
+                scheduler.step()
 
-                if phase == 'train':
-                    scheduler.step()
+            epoch_loss = running_loss / dataset_sizes[phase]
+            print(f'{phase} Loss: {epoch_loss:.4f}')
 
-                epoch_loss = running_loss / dataset_sizes[phase]
-                print(f'{phase} Loss: {epoch_loss:.4f}')
+            checkpoint = {
+                'epoch': epoch + 1,
+                'state_dict': model.state_dict(),
+                'optimizer': optimizer.state_dict()
+            }
+            is_best = phase == 'val' and epoch_loss < best_loss
+            if is_best:
+                best_loss = epoch_loss
 
-                if phase == 'val' and epoch_loss < best_loss:
-                    print('update loss')
-                    best_loss = epoch_loss
-                    torch.save(model.state_dict(), best_model_params_path)
+            save_ckp(checkpoint, is_best, checkpoint_path, best_model_path)
 
-            print()
+            
 
-        time_elapsed = time.time() - since
-        print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
-        print(f'Best val Loss: {best_loss:4f}')
 
-        model.load_state_dict(torch.load(best_model_params_path, weights_only=True))
+    time_elapsed = time.time() - since
+    print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
+    print(f'Best val Loss: {best_loss:4f}')
+
     return model
 
 
@@ -234,12 +264,7 @@ if __name__ == '__main__':
     gt_joints = test_batch['joint_labels']
     
     # Download pretrained model and change output to my class (x,y) * 14 joints
-    model = torchvision.models.resnet50() # using fine tuned parameters now
-    num_ftrs = model.fc.in_features
-    model.fc = nn.Linear(num_ftrs, 28)
-    print('Load weights')
-    model.load_state_dict(torch.load(os.path.join(model_path, 'resnet_weights.pth'), 
-                                     weights_only=True, map_location=device))
+    model = make_resnet50(fine_tune=True, weights_path=os.path.join(model_path, 'resnet_weights.pth'))
 
     pred_joints = model(test_img_batch)
     pred_joints = pred_joints.view(-1, 14, 2)
