@@ -1,0 +1,129 @@
+cuda
+Epoch 0/24
+----------
+train Loss: 7449.6852
+val Loss: 6674.7750
+Saving Model
+Epoch 1/24
+----------
+train Loss: 6740.0564
+val Loss: 6673.9809
+Saving Model
+Epoch 2/24
+----------
+train Loss: 6654.7453
+val Loss: 6608.6090
+Saving Model
+Epoch 3/24
+----------
+train Loss: 6555.8597
+val Loss: 6446.4565
+Saving Model
+Epoch 4/24
+----------
+train Loss: 6476.3755
+val Loss: 6456.6360
+Saving Model
+Epoch 5/24
+----------
+train Loss: 6430.6000
+val Loss: 6377.4883
+Saving Model
+Epoch 6/24
+----------
+train Loss: 6363.4852
+val Loss: 6381.6603
+Saving Model
+Epoch 7/24
+----------
+train Loss: 6371.7830
+val Loss: 6371.9271
+Saving Model
+Epoch 8/24
+----------
+train Loss: 6327.7516
+val Loss: 6386.3353
+Saving Model
+Epoch 9/24
+----------
+train Loss: 6320.5383
+val Loss: 6394.3403
+Saving Model
+Epoch 10/24
+----------
+train Loss: 6298.1949
+val Loss: 6418.1039
+Saving Model
+Epoch 11/24
+----------
+train Loss: 6352.0803
+val Loss: 6378.9996
+Saving Model
+Epoch 12/24
+----------
+train Loss: 6275.6564
+val Loss: 6475.8505
+Saving Model
+Epoch 13/24
+----------
+train Loss: 6307.0560
+val Loss: 6446.4933
+Saving Model
+Epoch 14/24
+----------
+train Loss: 6307.9787
+val Loss: 6315.4905
+Saving Model
+Epoch 15/24
+----------
+train Loss: 6354.8273
+val Loss: 6379.1989
+Saving Model
+Epoch 16/24
+----------
+train Loss: 6326.0556
+val Loss: 6373.5532
+Saving Model
+Epoch 17/24
+----------
+train Loss: 6364.6806
+val Loss: 6458.1319
+Saving Model
+Epoch 18/24
+----------
+train Loss: 6334.6241
+val Loss: 6284.4796
+Saving Model
+Epoch 19/24
+----------
+train Loss: 6288.9637
+val Loss: 6351.6393
+Saving Model
+Epoch 20/24
+----------
+train Loss: 6361.6152
+val Loss: 6438.8134
+Saving Model
+Epoch 21/24
+----------
+train Loss: 6356.6629
+val Loss: 6391.4150
+Saving Model
+Epoch 22/24
+----------
+train Loss: 6289.5463
+val Loss: 6431.7193
+Saving Model
+Epoch 23/24
+----------
+train Loss: 6306.2304
+val Loss: 6365.6186
+Saving Model
+Epoch 24/24
+----------
+train Loss: 6301.7767
+val Loss: 6315.7584
+Saving Model
+Training complete in 58m 57s
+Best val Loss: 6284.479572
+Done training

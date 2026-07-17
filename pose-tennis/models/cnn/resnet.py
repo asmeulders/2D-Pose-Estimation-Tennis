@@ -13,7 +13,7 @@ import time
 from tempfile import TemporaryDirectory
 
 import data.leeds.leeds as leeds
-from train import save_ckp
+from utils.train_utils import save_ckp
 
 def make_resnet50(fine_tune=True, weights_path=None):
     # Get model
@@ -24,7 +24,8 @@ def make_resnet50(fine_tune=True, weights_path=None):
     if not fine_tune:
         for param in model.parameters():
             param.requires_grad = False
-
+    
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # Make final output layer
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, 28) # 14 joints * 2 coordinates
@@ -34,17 +35,18 @@ def make_resnet50(fine_tune=True, weights_path=None):
         assert isinstance(weights_path, str)
         ''
         print(f"Load weights from {weights_path}")
-        model.load_state_dict(
-            torch.load(weights_path, weights_only=True, map_location=device))
+        checkpoint = torch.load(weights_path, map_location=device)
+        model.load_state_dict(checkpoint['state_dict'])
     
     return model
 
 
 
 
-def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes, checkpoint_path, best_model_path, start_epoch=0, num_epochs=25, device="cpu"):
+def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes, checkpoint_dir, best_model_dir, start_epoch=0, num_epochs=25, device="cpu"):
     since = time.time()
     best_loss = float('inf')
+    print(device)
 
     for epoch in range(start_epoch, num_epochs):
         print(f'Epoch {epoch}/{num_epochs - 1}')
@@ -88,13 +90,13 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict()
             }
-            is_best = phase == 'val' and epoch_loss < best_loss
-            if is_best:
-                best_loss = epoch_loss
 
-            save_ckp(checkpoint, is_best, checkpoint_path, best_model_path)
+            if phase == 'val':
+                is_best = epoch_loss < best_loss
+                if is_best:
+                    best_loss = epoch_loss
 
-            
+                save_ckp(checkpoint, is_best, checkpoint_dir, best_model_dir)            
 
 
     time_elapsed = time.time() - since
@@ -280,8 +282,8 @@ if __name__ == '__main__':
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
     
     model.to(device)
-    model = train(model, loss_function, optimizer, scheduler=exp_lr_scheduler,
-                  dataloaders=loaders, dataset_sizes=dataset_sizes, num_epochs=10, device=device)
+    # model = train(model, loss_function, optimizer, scheduler=exp_lr_scheduler,
+    #               dataloaders=loaders, dataset_sizes=dataset_sizes, num_epochs=10, device=device)
     
     torch.save(model.state_dict(), os.path.join(model_path, 'resnet_weights.pth'))
     print('Saved weights')
