@@ -10,10 +10,11 @@ def save_ckp(state, is_best, checkpoint_dir, best_model_dir):
         best_fpath = os.path.join(best_model_dir, 'best_model.pth')
         shutil.copyfile(f_path, best_fpath)
 
-def load_ckp(checkpoint_fpath, model, optimizer, device):
+def load_ckp(checkpoint_fpath, model, device, optimizer=None):
     print('Loading Model')
     checkpoint = torch.load(checkpoint_fpath, map_location=device)
     model.load_state_dict(checkpoint['state_dict'])
     model.to(device)
-    optimizer.load_state_dict(checkpoint['optimizer'])
+    if optimizer:
+        optimizer.load_state_dict(checkpoint['optimizer'])
     return model, optimizer, checkpoint['epoch']

@@ -1,4 +1,4 @@
-import os
+import os, time, math
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -9,13 +9,13 @@ from torchvision.models import resnet50, ResNet50_Weights
 from torch.utils.data.sampler import SubsetRandomSampler
 import numpy as np
 import matplotlib.pyplot as plt
-import time
+from PIL import Image
 from tempfile import TemporaryDirectory
 
 import data.leeds.leeds as leeds
-from utils.train_utils import save_ckp
+from utils.train_utils import save_ckp, load_ckp
 
-def make_resnet50(fine_tune=True, weights_path=None):
+def make_resnet50(fine_tune=True, weights_path=None, device='cpu'):
     # Get model
     initialize_weights = None if weights_path else ResNet50_Weights.DEFAULT
     model = resnet50(weights=initialize_weights)
@@ -25,7 +25,6 @@ def make_resnet50(fine_tune=True, weights_path=None):
         for param in model.parameters():
             param.requires_grad = False
     
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # Make final output layer
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, 28) # 14 joints * 2 coordinates
@@ -33,10 +32,7 @@ def make_resnet50(fine_tune=True, weights_path=None):
     # Load weights
     if weights_path:
         assert isinstance(weights_path, str)
-        ''
-        print(f"Load weights from {weights_path}")
-        checkpoint = torch.load(weights_path, map_location=device)
-        model.load_state_dict(checkpoint['state_dict'])
+        load_ckp(weights_path, model, device, optimizer=None)
     
     return model
 
@@ -106,87 +102,66 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
     return model
 
 
-def visualize_model(model, dataloaders, num_images=6, device="cpu"):
+def visualize_model(model, dataloaders, device="cpu"):
     was_training = model.training
     model.eval()
-    # images_so_far = 0
-    nrow = 8
-    padding = 0
-    # fig = plt.figure()
+
+    subplot_size = math.ceil(math.sqrt(dataloaders['val'].batch_size))
+    fig, axs = plt.subplots(subplot_size, subplot_size)
+    fig.suptitle("Visualize model")
 
     with torch.no_grad():
-        for i, sample_batch in enumerate(dataloaders['val']):
-            img_batch = sample_batch['img']
-            joint_labels_batch = sample_batch['joint_labels']
-            img_batch = img_batch.to(device)
-            joint_labels_batch = joint_labels_batch.to(device)
+        _, sample_batch = next(enumerate(dataloaders['val']))
+        img_batch, joint_labels_batch = sample_batch['img'], sample_batch['joint_labels']
+        img_batch, joint_labels_batch = img_batch.to(device), joint_labels_batch.to(device)
 
-            # make inference
-            outputs = model(img_batch)
+        outputs = model(img_batch)
+        outputs = outputs.view(-1, 14, 2)
+        outputs = outputs.numpy()
 
-            # resize from (1,24) to (2,14) (should be (x,y) in each row)
-            outputs = outputs.numpy()
-            outputs = np.resize(outputs, (2,14))
-            print(outputs)
+        for i, img in enumerate(img_batch):
+            row, col = i // subplot_size, i % subplot_size
+            show_img(img, outputs[i], axs[row, col])
 
-            out = torchvision.utils.make_grid(img_batch, nrow=nrow, padding=padding)
-
-            imshow(out, outputs, nrow)
-
-            # for j in range(inputs.size()[0]):
-                
-            #     images_so_far += 1
-            #     ax = plt.subplot(num_images//2, 2, images_so_far)
-            #     ax.axis('off')
-            #     imshow(img_batch)
-
-            #     if images_so_far == num_images:
-            #         model.train(mode=was_training)
-            #         return
         model.train(mode=was_training)
 
-def imshow(img, joint_labels_batch, nrow):
-    """Display image for Tensor."""
+def visualize_predictions(model, img_path, transforms, device):
+    was_training = model.training
+    model.eval()
+
+    img = np.asarray(Image.open(img_path))
+    mock_sample = {
+        'img': img,
+        'joint_labels': np.zeros((14,3))
+    }
+    img = transforms(mock_sample)['img']
+    img = img.to(device)
+
+    with torch.no_grad():
+        img = img.unsqueeze(0)
+        outputs = model(img)
+
+        joint_preds = outputs.numpy()
+        joint_preds = joint_preds.reshape(14,2)
+
+        ax = plt.subplot(2,2,1)
+        ax.axis('off')
+        show_img(img.cpu().data[0], joint_preds, ax=ax)
+
+        plt.show()
+
+        model.train(mode=was_training)
+
+
+def show_img(img, joints, ax):
     img = img.numpy().transpose((1, 2, 0))
     mean = np.array([0.485, 0.456, 0.406])
     std = np.array([0.229, 0.224, 0.225])
     img = std * img + mean
     img = np.clip(img, 0, 1)
-    plt.imshow(img)
-    x = y = np.array([])
-    for i, joint_labels in enumerate(joint_labels_batch):
-        joint_labels = joint_labels.numpy()
-        # need to shift down x values
-        sample_joints_x = joint_labels[:,0] + (i%nrow) * (224) # image width is reshaped to 224
-        x = np.concatenate((x, sample_joints_x))
-        # y values can stay the same
-        sample_joints_y = joint_labels[:,1] + (i // nrow) * 224
-        y = np.concatenate((y, sample_joints_y))
-        
-    plt.scatter(x, y, 50, c="r", marker="+")
-    plt.show()
 
-def imsave(img, gt_joints, pred_joints, nrow):
-    """Save image to disk showing predictions vs gt"""
-    img = img.numpy().transpose((1,2,0))
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
-    img = std * img + mean
-    img = np.clip(img, 0, 1)
-    plt.imshow(img)
-    x = y = np.array([])
-    for j, joint_labels_batch in enumerate([gt_joints, pred_joints]):
-        for i, joint_labels in enumerate(joint_labels_batch):
-            joint_labels = joint_labels.detach().numpy()
-            # need to shift down x values
-            sample_joints_x = joint_labels[:,0] + (i%nrow) * (224) # image width is reshaped to 224
-            x = np.concatenate((x, sample_joints_x))
-            # y values can stay the same
-            sample_joints_y = joint_labels[:,1] + (i // nrow) * 224
-            y = np.concatenate((y, sample_joints_y))
-        color = "r" if j % 2 == 0 else "b"
-        plt.scatter(x, y, 50, c=color, marker="+")
-    plt.savefig("predictions.png")
+    ax.imshow(img)
+    ax.scatter(joints[:,0], joints[:,1], 50, c="r", marker="+")
 
 
 if __name__ == '__main__':
@@ -249,51 +224,9 @@ if __name__ == '__main__':
         'test': dataset_size * test_split
     }
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # Get a batch of training data
-    sample_batch = next(iter(loaders['train']))
-    img_batch = sample_batch['img']
-    joint_labels_batch = sample_batch['joint_labels']
-    # Make a grid from batch
-    nrow = 8
-    padding = 0
-    out = torchvision.utils.make_grid(img_batch, nrow=nrow, padding=padding)
-
-    imshow(out, joint_labels_batch, nrow)
-    
-    test_batch = next(iter(loaders['test']))
-    test_img_batch = test_batch['img']
-    gt_joints = test_batch['joint_labels']
-    
-    # Download pretrained model and change output to my class (x,y) * 14 joints
-    model = make_resnet50(fine_tune=True, weights_path=os.path.join(model_path, 'resnet_weights.pth'))
-
-    pred_joints = model(test_img_batch)
-    pred_joints = pred_joints.view(-1, 14, 2)
-    out = torchvision.utils.make_grid(test_img_batch, nrow=nrow, padding=padding)
-    imsave(out, gt_joints, pred_joints, nrow)
-
-    loss_function = nn.MSELoss()
-
-    # Observe that all parameters are being optimized
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-
-    # Decay LR by a factor of 0.1 every 7 epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
-    
+    device = 'cpu'
+    model = make_resnet50(fine_tune=True, weights_path=os.path.join(model_path, 'weights', 'best_model', 'best_model.pth'))
     model.to(device)
-    # model = train(model, loss_function, optimizer, scheduler=exp_lr_scheduler,
-    #               dataloaders=loaders, dataset_sizes=dataset_sizes, num_epochs=10, device=device)
-    
-    torch.save(model.state_dict(), os.path.join(model_path, 'resnet_weights.pth'))
-    print('Saved weights')
-    # visualize_model(model, loaders, device=device)
-    # plt.show()
 
-    # Usage Example:
-    # num_epochs = 10
-    # for epoch in range(num_epochs):
-    #     print(epoch)
-    #     # Train:   
-    #     for batch_index, sample in enumerate(train_loader):
-    #         img, joint_labels = sample['img'], sample['joint_labels']
+    visualize_model(model, loaders, device=device)
+    plt.show()

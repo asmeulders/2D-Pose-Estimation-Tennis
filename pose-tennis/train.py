@@ -21,7 +21,7 @@ def train_fine_tune(model, split_sizes, data_loaders, resume=False):
     best_path = os.path.join('models', 'cnn', 'weights', 'best_model')
     start_epoch = 0
     if resume:
-        model, optimizer, start_epoch = load_ckp(os.path.join(ckp_dir, 'checkpoint.pth'), model, optimizer, device)
+        model, optimizer, start_epoch = load_ckp(os.path.join(ckp_dir, 'checkpoint.pth'), model, device, optimizer)
     else:
         model.to(device)
     
@@ -48,7 +48,7 @@ def train_ffe(model, split_sizes, data_loaders, resume=False):
     best_path = os.path.join('models', 'cnn', 'weights', 'best_model')
     start_epoch = 0
     if resume:
-        model, optimizer, start_epoch = load_ckp(os.path.join(ckp_dir, 'checkpoint.pth'), model, optimizer, device)
+        model, optimizer, start_epoch = load_ckp(os.path.join(ckp_dir, 'checkpoint.pth'), model, device, optimizer)
     else:
         model.to(device)
     
@@ -81,7 +81,8 @@ if __name__ == '__main__':
     data_loaders = leeds.split_dataset(leeds_dataset, train_split, val_split, test_split,
                                        batch_size, random_seed, shuffle_dataset=True)
     
-    model = make_resnet50(fine_tune=False, weights_path=os.path.join('models', 'cnn', 'weights', 'best_model', 'best_model.pth'))
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model = make_resnet50(fine_tune=False, weights_path=os.path.join('models', 'cnn', 'weights', 'best_model', 'best_model.pth'), device=device)
 
     size = len(leeds_dataset)
     split_sizes = {
