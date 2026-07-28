@@ -28,6 +28,7 @@ class LeedsSportsDataset(Dataset):
         
         # Set values
         self.joints = joints
+        # make bool if == 1
         self.img_dir = img_dir
         self.transform = transform
 
@@ -40,6 +41,8 @@ class LeedsSportsDataset(Dataset):
         img_path = os.path.join(self.img_dir, filename)
         img = decode_image(img_path)
         img = np.transpose(np.array(img), (1,2,0)) # (chan, height, width) -> (height, width, chan)
+
+        # add field for mask
         
         # Get joint labels
         joint_labels = self.joints[idx]
@@ -166,6 +169,7 @@ def show_joints(img, joint_labels):
 
 if __name__ == '__main__':
     leeds_dataset = LeedsSportsDataset('joints.mat', 'images')
+    print(leeds_dataset.joints)
     #print(len(leeds_dataset))
     #fig = plt.figure()
 
@@ -187,22 +191,22 @@ if __name__ == '__main__':
     #plt.axis('off')
     #plt.show()
 
-    scale = Rescale(256)
-    crop = RandomCrop(128)
-    composed = transforms.Compose([Rescale(256),
-                               RandomCrop(224)])
+    # scale = Rescale(256)
+    # crop = RandomCrop(128)
+    # composed = transforms.Compose([Rescale(256),
+    #                            RandomCrop(224)])
 
-    # Apply each of the above transforms on sample.
-    fig = plt.figure()
-    sample = leeds_dataset[0]
-    for i, tsfrm in enumerate([scale, crop, composed]):
-        transformed_sample = tsfrm(sample)
-        ax = plt.subplot(1, 3, i + 1)
-        plt.tight_layout()
-        ax.set_title(type(tsfrm).__name__)
-        show_joints(**transformed_sample)
+    # # Apply each of the above transforms on sample.
+    # fig = plt.figure()
+    # sample = leeds_dataset[0]
+    # for i, tsfrm in enumerate([scale, crop, composed]):
+    #     transformed_sample = tsfrm(sample)
+    #     ax = plt.subplot(1, 3, i + 1)
+    #     plt.tight_layout()
+    #     ax.set_title(type(tsfrm).__name__)
+    #     show_joints(**transformed_sample)
 
-    plt.show()
+    # plt.show()
 
 
 def split_dataset(

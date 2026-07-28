@@ -15,6 +15,8 @@ from tempfile import TemporaryDirectory
 import data.leeds.leeds as leeds
 from utils.train_utils import save_ckp, load_ckp
 
+# TODO: Look into making my own model class
+
 def make_resnet50(fine_tune=True, weights_path=None, device='cpu'):
     # Get model
     initialize_weights = None if weights_path else ResNet50_Weights.DEFAULT
@@ -28,6 +30,8 @@ def make_resnet50(fine_tune=True, weights_path=None, device='cpu'):
     # Make final output layer
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, 28) # 14 joints * 2 coordinates
+    # TODO: want a bigger model to decode
+    # Good starting point - pose estimation literature: what do other's decoders look like?
 
     # Load weights
     if weights_path:
@@ -118,6 +122,8 @@ def visualize_model(model, dataloaders, device="cpu"):
         outputs = model(img_batch)
         outputs = outputs.view(-1, 14, 2)
         outputs = outputs.numpy()
+
+        # ignore non-visible joints
 
         for i, img in enumerate(img_batch):
             row, col = i // subplot_size, i % subplot_size
