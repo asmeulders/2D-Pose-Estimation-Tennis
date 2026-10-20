@@ -8,3 +8,6 @@ pose-tennis/data/leeds/images/*
 
 # Pycache
 __pycache__/
+
+# Model weights
+weights/
