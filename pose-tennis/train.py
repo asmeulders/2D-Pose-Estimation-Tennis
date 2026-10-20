@@ -82,7 +82,8 @@ if __name__ == '__main__':
                                        batch_size, random_seed, shuffle_dataset=True)
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = make_resnet50(fine_tune=False, weights_path=os.path.join('models', 'cnn', 'weights', 'best_model', 'best_model.pth'), device=device)
+    path = os.path.join('models', 'cnn', 'weights', 'best_model', 'best_model.pth')
+    model = make_resnet50(fine_tune=False, weights_path=None, device=device)
 
     size = len(leeds_dataset)
     split_sizes = {

@@ -63,7 +63,10 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
             for sample_batch in dataloaders[phase]:
                 img_batch = sample_batch['img'].to(device)
                 joint_labels_batch = sample_batch['joint_labels'].to(device)  # shape: (batch, 14, 3) if visibility still included
+
                 target = joint_labels_batch[:, :, :2]
+                visibility_mask = joint_labels_batch[:, :, 2:]
+                masked_target = target * visibility_mask
 
                 optimizer.zero_grad() # reset gradients
 
@@ -71,7 +74,7 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
                     outputs = model(img_batch)
                     outputs = outputs.view(-1, 14, 2)
 
-                    loss = loss_function(outputs, target)
+                    loss = loss_function(outputs, masked_target)
 
                     if phase == 'train':
                         loss.backward()
@@ -149,6 +152,8 @@ def visualize_predictions(model, img_path, transforms, device):
 
         joint_preds = outputs.numpy()
         joint_preds = joint_preds.reshape(14,2)
+
+        # masked_joint_preds = joint_preds * 
 
         ax = plt.subplot(2,2,1)
         ax.axis('off')
