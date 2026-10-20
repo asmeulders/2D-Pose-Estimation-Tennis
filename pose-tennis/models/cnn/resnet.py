@@ -13,6 +13,7 @@ from PIL import Image
 from tempfile import TemporaryDirectory
 
 import data.leeds.leeds as leeds
+from decoder.ResNetDecoder import ResNetDecoder
 from utils.train_utils import save_ckp, load_ckp
 
 # TODO: Look into making my own model class
@@ -28,9 +29,8 @@ def make_resnet50(fine_tune=True, weights_path=None, device='cpu'):
             param.requires_grad = False
     
     # Make final output layer
-    num_ftrs = model.fc.in_features
-    model.fc = nn.Linear(num_ftrs, 28) # 14 joints * 2 coordinates
-    # TODO: want a bigger model to decode
+    model.fc = ResNetDecoder()
+
     # Good starting point - pose estimation literature: what do other's decoders look like?
 
     # Load weights
@@ -64,9 +64,8 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
                 img_batch = sample_batch['img'].to(device)
                 joint_labels_batch = sample_batch['joint_labels'].to(device)  # shape: (batch, 14, 3) if visibility still included
 
-                target = joint_labels_batch[:, :, :2]
+                target = joint_labels_batch[:, :, :2] / 256
                 visibility_mask = joint_labels_batch[:, :, 2:]
-                masked_target = target * visibility_mask
 
                 optimizer.zero_grad() # reset gradients
 
@@ -74,7 +73,8 @@ def train(model, loss_function, optimizer, scheduler, dataloaders, dataset_sizes
                     outputs = model(img_batch)
                     outputs = outputs.view(-1, 14, 2)
 
-                    loss = loss_function(outputs, masked_target)
+                    sq_err = ((outputs - target) ** 2) * visibility_mask
+                    loss = sq_err.sum() / (visibility_mask.sum() * 2).clamp(min=1)
 
                     if phase == 'train':
                         loss.backward()
@@ -123,7 +123,7 @@ def visualize_model(model, dataloaders, device="cpu"):
         img_batch, joint_labels_batch = img_batch.to(device), joint_labels_batch.to(device)
 
         outputs = model(img_batch)
-        outputs = outputs.view(-1, 14, 2)
+        outputs = outputs.view(-1, 14, 2) * 256
         outputs = outputs.numpy()
 
         # ignore non-visible joints
@@ -151,7 +151,7 @@ def visualize_predictions(model, img_path, transforms, device):
         outputs = model(img)
 
         joint_preds = outputs.numpy()
-        joint_preds = joint_preds.reshape(14,2)
+        joint_preds = joint_preds.reshape(14,2) * 256
 
         # masked_joint_preds = joint_preds * 
 
