@@ -14,4 +14,7 @@ class ResNetDecoder(nn.Module):
         self.output = nn.Linear(512, 28) # 14 joints * 2 coordinates
 
     def forward(self, x):
-        pass
+        x = self.hidden1(x)
+        x = self.ReLU1(x)
+        x = self.output(x)
+        return x
