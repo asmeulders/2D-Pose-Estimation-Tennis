@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 
 class ResNetDecoder(nn.Module):
-    def __init__(self, encoder_name="resnet_50") -> None:
+    def __init__(self, encoder_name="resnet50") -> None:
         super().__init__()
 
         feature_mapping = {"resnet18": 512, "resnet34": 512, "resnet50": 2048}

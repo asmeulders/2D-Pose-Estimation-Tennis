@@ -13,7 +13,7 @@ from PIL import Image
 from tempfile import TemporaryDirectory
 
 import data.leeds.leeds as leeds
-from decoder.ResNetDecoder import ResNetDecoder
+from models.decoder.ResNetDecoder import ResNetDecoder
 from utils.train_utils import save_ckp, load_ckp
 
 # TODO: Look into making my own model class
